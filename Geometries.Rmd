@@ -1,19 +1,250 @@
 ---
 title: "R Notebook"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+<img src="https://i.imgur.com/6U6q5jQ.png"/>
 
-Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+
+# Geometries
+
+The geodataframe (GDF) is a dataframe (DF) where every row represents an geometry  (point, line, polygon). Python requires you to install the **SF** library to work with these structures.
+
+In the repository for this class you will see a folder named **maps**, with files  I have previously downloaded from this [website](https://www.efrainmaps.es/english-version/free-downloads/world/). There are three maps: *countries*, *cities*, and *rivers* of the world.
+
+Visit the [repository](https://github.com/PythonVersusR/DataStructures_spatial/tree/main) and you may see something like this:
+
+<img src="https://github.com/PythonVersusR/DataStructures_spatial/blob/main/pics/repo_Git.jpg?raw=true">
+
+When you go inside the _maps_ folder you will see this:
+
+<img title="a title" alt="Alt text" src="https://github.com/PythonVersusR/DataStructures_spatial/blob/main/pics/repo_Git_mapFolder.jpg?raw=true">
+
+You see:
+
+1.  A folder with files.
+2.  Some *.json* files.
+3.  Some *.zip* files. These files are zipped or compressed version of the files in the folder (not the folder with files).
+
+Now, take a look a **World_Countries** folder:
+
+<img src="https://github.com/PythonVersusR/DataStructures_spatial/blob/main/pics/repo_Git_mapFolder_shapes.jpg?raw=true">
+
+There, you see that this **one map** requires **several files**. That is the nature of the shapefile.
+
+When the maps are in GitHub, R can only read **JSON** files. The others will need to be downloaded to the local computer. Then,
 
 ```{r}
-plot(cars)
+linkGit_json="https://github.com/PythonVersusR/DataStructures_spatial/raw/main/maps/World_Countries.json"
 ```
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
 
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+Let's read the file with the help of **sf**:
 
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
+
+```{r}
+library(sf)
+countriesJson=sf::st_read(linkGit_json)
+```
+
+
+
+Let's see what we have:
+
+
+```{r}
+typeof(countriesJson)
+```
+
+Some more info:
+
+
+```{r}
+str(countriesJson)
+```
+
+Notice the presence of the column _"geometry"_.
+
+Let me work with all the maps we have:
+
+
+```{r}
+citiesLinkGit="https://github.com/PythonVersusR/DataStructures_spatial/raw/main/maps/World_Cities.json"
+riversLinkGit="https://github.com/PythonVersusR/DataStructures_spatial/raw/main/maps/World_Hydrography.json"
+
+citiesJson=sf::st_read(citiesLinkGit)
+riversJson=sf::st_read(riversLinkGit)
+```
+
+We have three different maps:
+
+
+```{r}
+head(citiesJson)
+```
+
+```{r}
+head(riversJson)
+```
+
+
+Now you see each file stores different geometries:
+
+
+```{r}
+summary(riversJson$geometry)
+```
+
+
+
+
+
+```{r}
+summary(citiesJson$geometry)
+```
+
+
+```{r}
+summary(countriesJson$geometry)
+```
+
+
+Let's see the maps:
+
+
+```{r}
+plot(countriesJson['geometry'])
+```
+
+
+```{r}
+plot(riversJson['geometry'])
+```
+
+```{r}
+plot(citiesJson['geometry'])
+```
+
+
+
+
+## Map Projection
+
+The projection (CRS) is a very important property of the maps. They affect several aspects:
+
+* shape
+* area
+* scale
+* direction
+
+If you plan on doing some computations with several maps, you should verify that all have the same projection (**CRS**):
+
+
+```{r}
+st_crs(countriesJson)$epsg==st_crs(citiesJson)$epsg
+st_crs(countriesJson)$epsg==st_crs(riversJson)$epsg
+```
+Are they projected:
+```{r}
+```
+
+
+```{r}
+st_is_longlat(countriesJson)
+st_is_longlat(citiesJson)
+st_is_longlat(riversJson)
+```
+
+
+They are NOT projected:
+
+```{r}
+st_crs(countriesJson)
+st_crs(citiesJson)
+st_crs(riversJson)
+```
+
+
+
+
+Our three maps are not projected. Then some math may not work. Let's work next with one country.
+
+## Subsetting
+
+We want to keep the geometries of one contry. We can subset our maps by *filtering*:
+
+
+```{r}
+# filtering 
+brazil=countriesJson[countriesJson$COUNTRY=='Brazil',]
+```
+
+But you can also subset by *clipping*, as sometimes other data frames may not have the same fields for filtering:
+
+
+```{r}
+# clipping
+citiesBrazil = st_intersection(brazil,citiesJson)
+riversBrazil = st_intersection(brazil,riversJson)
+```
+
+Can we compute the centroid of Brazil?
+
+
+```{r}
+# this works with warning
+st_centroid(brazil)
+```
+
+We should avoid the warning  and set the right projection.
+
+## Reprojecting
+
+A projected CRS will have units in meters or feet (or similar). For a more accurate option it is better to look for the ones explicitly prepared for a particular locations of the world. You can request a crs per country [here](https://epsg.io/?q=brazil+kind%3APROJCRS):
+
+
+```{r}
+# recommended for Brazil (meters)
+brazil_5641 = st_transform(brazil, "epsg:5641")
+st_crs(brazil_5641)
+```
+
+
+
+```{r}
+# this works with no warning
+
+st_centroid(brazil_5641)
+```
+Let's reproject the others:
+```{r}
+citiesBrazil_5641=st_transform(citiesBrazil, "epsg:5641")
+riversBrazil_5641=st_transform(riversBrazil, "epsg:5641")
+```
+
+
+
+Finally, we can plot what we have:
+
+
+```{r}
+
+library(ggplot2)
+
+base=ggplot() 
+layer1=base + geom_sf(data=brazil_5641, fill='white')
+layer2=layer1 + geom_sf(data=st_centroid(brazil_5641),color='red',size=10)
+layer3=layer2 + geom_sf(data=citiesBrazil_5641,color='green',size=5,shape='+')
+layer4=layer3 + geom_sf(data=riversBrazil_5641,color='blue',linewidth=0.5)
+finalMap=layer4+  coord_sf(datum = st_crs(brazil_5641))
+finalMap
+
+```
+
+
+
 
