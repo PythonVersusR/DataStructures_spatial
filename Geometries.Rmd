@@ -11,7 +11,7 @@ output:
 
 # Geometries
 
-The geodataframe (GDF) is a dataframe (DF) where every row represents an geometry  (point, line, polygon). Python requires you to install the **SF** library to work with these structures.
+The geodataframe (GDF) is a dataframe (DF) where every row represents a geometry  (point, line, polygon). R requires you to install the **SF** library to work with these structures.
 
 In the repository for this class you will see a folder named **maps**, with files  I have previously downloaded from this [website](https://www.efrainmaps.es/english-version/free-downloads/world/). There are three maps: *countries*, *cities*, and *rivers* of the world.
 
@@ -148,9 +148,8 @@ If you plan on doing some computations with several maps, you should verify that
 st_crs(countriesJson)$epsg==st_crs(citiesJson)$epsg
 st_crs(countriesJson)$epsg==st_crs(riversJson)$epsg
 ```
+
 Are they projected:
-```{r}
-```
 
 
 ```{r}
